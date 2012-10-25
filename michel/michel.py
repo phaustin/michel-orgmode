@@ -86,7 +86,9 @@ class TasksTree(object):
         """Returns the sequence of lines of the string representation"""
         res = []
         for subtask in self.subtasks:
-            indentations = '\t'.join(['' for i in range(level + 1)])
+            #indentations = '\t' * level
+            # add number of asterisks corresponding to depth of task
+            indentations = '*' * (level+1) + " "
             res.append(indentations + subtask.title)
             subtasks_lines = subtask._lines(level + 1)
             res += subtasks_lines
