@@ -1,4 +1,4 @@
-#!env python
+#!/usr/bin/env python
 """
 Pushes/pulls flat text files to google tasks
 
