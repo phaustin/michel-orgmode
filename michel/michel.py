@@ -167,29 +167,6 @@ def erase_todolist(list_id):
         service.tasks().delete(tasklist=list_id,
                 task=task['id']).execute()
 
-def parse_old(path):
-    """Parses a todolist file and returns a tree"""
-    tasks_tree = TasksTree()
-    with open(path) as f:
-        curr_indent_lvl = 0
-        for n, line in enumerate(f):
-            # trim trailing '\n'
-            if line[-1] == '\n':
-                line = line[:-1]
-            # get the indent level
-            indent_lvl = 0
-            while line[0] == '\t':
-                line = line[1:]
-                indent_lvl += 1
-            assert indent_lvl <= curr_indent_lvl + 1, ("line %d: "
-                    "subtask has no parent task" % n)
-            curr_indent_lvl = indent_lvl
-            # TODO: Parse and add task_notes if they exist, not just title
-            # (line) -- also parse DONE in a headline, and map to status
-            # of 'completed'
-            tasks_tree.last(indent_lvl).add_subtask(title=line) 
-    return tasks_tree
-
 def parse(path):
     """Parses a todolist file and returns a tree"""
     headline_regex = re.compile("^(\*+ )( *)(DONE )?")
