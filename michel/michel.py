@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 """
-Pushes/pulls flat text files to google tasks
+Pushes/pulls org-mode text files to google tasks
 
 USAGE:
-    michel pull                 prints the default tasklist on stdout
-    michel push <textfile>      replace the default tasklist with the
-                                content of <textfile>.
+  michel pull [list name]             prints the default tasklist to stdout
+                                      in org-mode format.
+  michel push <org-file> [list name]  replace the default tasklist with the
+                                      content of <org-file>.
 """
 from __future__ import with_statement
 import gflags
@@ -142,9 +143,28 @@ def get_service():
     http = credentials.authorize(http)
     return build(serviceName='tasks', version='v1', http=http)
 
-def print_todolist(list_id):
+def get_list_id(service, list_name=None):
+    if list_name is None:
+        list_id = "@default"
+    else:
+        # look up id by list name
+        tasklists = service.tasklists().list().execute()
+        for tasklist in tasklists['items']:
+            if tasklist['title'] == list_name:
+                list_id = tasklist['id']
+                break
+        else:
+            # no list with the given name was found
+            print '\nERROR: No google task-list named "%s"\n' % list_name
+            sys.exit(2)
+
+    return list_id
+
+
+def print_todolist(list_name=None):
     """Prints the todo list of given id"""
     service = get_service()
+    list_id = get_list_id(service, list_name)
     tasks = service.tasks().list(tasklist=list_id).execute()
     tasks_tree = TasksTree()
     tasklist = [t for t in tasks.get('items', [])]
@@ -233,26 +253,36 @@ def parse(path):
 
     return tasks_tree
 
-def push_todolist(path, list_id):
+def push_todolist(path, list_name):
     """Pushes the specified file to the specified todolist"""
+    service = get_service()
+    list_id = get_list_id(service, list_name)
     tasks_tree = parse(path)
     erase_todolist(list_id)
-    tasks_tree.push(get_service(), list_id)
+    tasks_tree.push(service, list_id)
 
 def main():
     if (len(sys.argv)) < 2:
         print(__doc__)
     elif sys.argv[1] == "pull":
-        print_todolist('@default')
+        if not len(sys.argv) > 2:
+            list_name = None
+        else:
+            list_name = sys.argv[2]
+        print_todolist(list_name)
     elif sys.argv[1] == "push":
-        if not len(sys.argv) == 3:
-            print("'push' expects exactly 1 argument")
+        if len(sys.argv) < 3:
+            print("'push' expects at least 1 argument")
             sys.exit(2)
         path = sys.argv[2]
         if not os.path.exists(path):
             print("The file you want to push does not exist.")
             sys.exit(2)
-        push_todolist(path, '@default')
+        if not len(sys.argv) > 3:
+            list_name = None
+        else:
+            list_name = sys.argv[3]
+        push_todolist(path, list_name)
     else:
         print(__doc__)
         sys.exit(2)
