@@ -90,6 +90,13 @@ class TasksTree(object):
             # add number of asterisks corresponding to depth of task
             indentations = '*' * (level+1) + " "
             res.append(indentations + subtask.title)
+            if subtask.task_notes is not None:
+                notes = subtask.task_notes
+                # add initial space to lines starting w/'*', so that it isn't treated as a task
+                if notes.startswith("*"):
+                    notes = " " + notes
+                notes = notes.replace("\n*", "\n *")
+                res.append(notes)
             subtasks_lines = subtask._lines(level + 1)
             res += subtasks_lines
         return res
