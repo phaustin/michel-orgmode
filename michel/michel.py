@@ -29,11 +29,13 @@ class TasksTree(object):
     - may have a title
     """
 
-    def __init__(self, title=None, task_id=None, task_notes=None):
+    def __init__(self, title=None, task_id=None, task_notes=None, status=None):
         self.title = title
         self.task_id = task_id
         self.subtasks = []
         self.task_notes = task_notes
+        # *status* usually takes on the value 'completed' or 'needsAction'
+        self.status = status 
 
     def get(self, task_id):
         """Returns the task of given id"""
@@ -45,18 +47,19 @@ class TasksTree(object):
                     return subtask.get(task_id)
 
     def add_subtask(self, title, task_id = None, parent_id = None,
-            task_notes=None):
+            task_notes=None, status=None):
         """
         Adds a subtask to the tree
         - with the specified task_id
         - as a child of parent_id
         """
         if not parent_id:
-            self.subtasks.append(TasksTree(title, task_id, task_notes))
+            self.subtasks.append(TasksTree(title, task_id, task_notes, status))
         else:
             if not self.get(parent_id):
                 raise ValueError, "No element with suitable parent id"
-            self.get(parent_id).add_subtask(title, task_id, None, task_notes)
+            self.get(parent_id).add_subtask(title, task_id, None, task_notes,
+                    status)
 
     def last(self, level):
         """Returns the last task added at a given level of the tree"""
@@ -139,7 +142,7 @@ def print_todolist(list_id):
         t = tasklist.pop(0)
         try:
             tasks_tree.add_subtask(t['title'].encode('utf-8'), t['id'],
-                    t.get('parent'), t.get('notes'))
+                    t.get('parent'), t.get('notes'), t.get('status'))
         except ValueError:
             fail_count += 1
             tasklist.append(t)
@@ -171,7 +174,8 @@ def parse(path):
                     "subtask has no parent task" % n)
             curr_indent_lvl = indent_lvl
             # TODO: Parse and add task_notes if they exist, not just title
-            # (line)
+            # (line) -- also parse DONE in a headline, and map to status
+            # of 'completed'
             tasks_tree.last(indent_lvl).add_subtask(title=line) 
     return tasks_tree
 
