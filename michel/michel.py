@@ -34,7 +34,7 @@ class TasksTree(object):
         self.title = title
         self.task_id = task_id
         self.subtasks = []
-        self.task_notes = task_notes
+        self.notes = task_notes
         # *status* usually takes on the value 'completed' or 'needsAction'
         self.status = task_status
 
@@ -77,7 +77,13 @@ class TasksTree(object):
         """Pushes the task tree to the given list"""
         # We do not want to push the root node
         if not root:
-            args = {'tasklist': list_id, 'body':{ 'title' : self.title } }
+            args = {'tasklist': list_id,
+                    'body': {
+                                'title': self.title,
+                                'notes': self.notes,
+                                'status': self.status
+                            }
+                   }
             if parent:
                 args['parent'] = parent
             res = service.tasks().insert(**args).execute()
@@ -98,8 +104,8 @@ class TasksTree(object):
                 done_string = " DONE"
             indentations = '*' * (level+1) + done_string + " "
             res.append(indentations + subtask.title)
-            if subtask.task_notes is not None:
-                notes = subtask.task_notes
+            if subtask.notes is not None:
+                notes = subtask.notes
                 # add initial space to lines starting w/'*', so that it isn't treated as a task
                 if notes.startswith("*"):
                     notes = " " + notes
