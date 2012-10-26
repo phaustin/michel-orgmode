@@ -20,11 +20,11 @@ Commands
 
 Michel keeps it simple. It only has two commands:
 
-    michel pull [list name]
+    michel.py pull [list name]
 Print the named (or default if no name is given) task list on the standard
 output.
 
-    michel push <TODO.org> [list name]
+    michel.py push <TODO.org> [list name]
 Replace the named (or default if no name is given) task list with the contents
 of TODO.org
 
@@ -45,16 +45,27 @@ Here is how michel can be used. A crontask pulls every 15 minutes the
 default TODO list, and another one displays a notification during 10
 seconds every hour (requires notify-send).
 
-    */15 * * * * michel pull > /tmp/TODO && mv /tmp/TODO ~/.TODO
+    */15 * * * * /path/to/michel.py pull > /tmp/TODO && mv /tmp/TODO ~/.TODO
     0 * * * * DISPLAY=":0.0" notify-send -t 10000 TODO "$(cat ~/.TODO)"
 
 After you modify your TODO list, don't forget to push it!
 
-    michel push .TODO
+    michel.py push .TODO
 
 If this trick is not working, it is probably because the variable PATH
 does not contains /usr/local/bin in crontab. You might want to set it
 manually. See 'man 5 crontab'.
+
+Installation Dependencies
+=========================
+
+The `michel.py` script runs under Linux (not tested on other platforms yet).
+To run the script, you need to install the following dependencies:
+
+* [google-api-python-client](http://code.google.com/p/google-api-python-client/)
+* [python-gflags](http://code.google.com/p/python-gflags/) (usually available in
+  package repositories of major linux distributions)
+
 
 About
 =====
