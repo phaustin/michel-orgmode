@@ -90,8 +90,12 @@ class TasksTree(object):
         res = []
         for subtask in self.subtasks:
             #indentations = '\t' * level
-            # add number of asterisks corresponding to depth of task
-            indentations = '*' * (level+1) + " "
+            # add number of asterisks corresponding to depth of task, followed
+            # by "DONE" if the task is marked as completed.
+            done_string = ""
+            if (subtask.status is not None) and (subtask.status == "completed"):
+                done_string = " DONE"
+            indentations = '*' * (level+1) + done_string + " "
             res.append(indentations + subtask.title)
             if subtask.task_notes is not None:
                 notes = subtask.task_notes
