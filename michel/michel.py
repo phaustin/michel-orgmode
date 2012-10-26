@@ -30,13 +30,13 @@ class TasksTree(object):
     - may have a title
     """
 
-    def __init__(self, title=None, task_id=None, task_notes=None, status=None):
+    def __init__(self, title=None, task_id=None, task_notes=None, task_status=None):
         self.title = title
         self.task_id = task_id
         self.subtasks = []
         self.task_notes = task_notes
         # *status* usually takes on the value 'completed' or 'needsAction'
-        self.status = status 
+        self.status = task_status
 
     def get(self, task_id):
         """Returns the task of given id"""
@@ -48,19 +48,19 @@ class TasksTree(object):
                     return subtask.get(task_id)
 
     def add_subtask(self, title, task_id = None, parent_id = None,
-            task_notes=None, status=None):
+            task_notes=None, task_status=None):
         """
         Adds a subtask to the tree
         - with the specified task_id
         - as a child of parent_id
         """
         if not parent_id:
-            self.subtasks.append(TasksTree(title, task_id, task_notes, status))
+            self.subtasks.append(TasksTree(title, task_id, task_notes, task_status))
         else:
             if not self.get(parent_id):
                 raise ValueError, "No element with suitable parent id"
             self.get(parent_id).add_subtask(title, task_id, None, task_notes,
-                    status)
+                    task_status)
 
     def last(self, level):
         """Returns the last task added at a given level of the tree"""
@@ -186,7 +186,7 @@ def parse_old(path):
 
 def parse(path):
     """Parses a todolist file and returns a tree"""
-    headline_regex = re.compile("^\*+ ")
+    headline_regex = re.compile("^(\*+ )( *)(DONE )?")
     tasks_tree = TasksTree()
     with open(path) as f:
         last_indent_level = 0
@@ -196,7 +196,11 @@ def parse(path):
             line = line.rstrip("\n")
             try:
                 # assign task_depth; root depth starts at 0
-                indent_level = len(matches[0]) - 2
+                num_asterisks_and_space = len(matches[0][0])
+                indent_level = num_asterisks_and_space - 2
+                
+                # strip off asterisks-and-space prefix
+                line = line[num_asterisks_and_space:]
                 
                 # if we get to this point, then it means that a new task is
                 # starting on this line -- we need to add the last-parsed task
@@ -206,21 +210,28 @@ def parse(path):
                     # add the task to the tree
                     tasks_tree.last(indent_level).add_subtask(
                             title=task_title,
-                            task_notes=task_notes)
+                            task_notes=task_notes,
+                            task_status=task_status)
                 else:
                     # this is the first task, so skip adding a task to the
                     # tree, and record that we've encountered our first task
                     seen_first_task = True
-                    
-                # strip off asterisks-and-space prefix
-                line = line[indent_level+2:]
                 
-                # TODO: parse DONE if it exists and assign task_status value
+                if matches[0][2] == 'DONE ':
+                    task_status = 'completed'
+                    # number of spaces preceeding 'DONE' and after
+                    # asterisks+single-space
+                    num_extra_spaces = len(matches[0][1])
+                    # remove the '[ ...]DONE ' from the line
+                    line = line[num_extra_spaces + len('DONE '):]
+                else:
+                    task_status = 'needsAction'
+                
                 task_title = line
                 task_notes = None
             except IndexError:
                 # this is not a task, but a task-notes line
-                if task_notes == None:
+                if task_notes is None:
                     task_notes = line
                 else:
                     task_notes += "\n" + line
@@ -234,7 +245,8 @@ def parse(path):
         # of the for loop)
         tasks_tree.last(indent_level).add_subtask(
                 title=task_title,
-                task_notes=task_notes)
+                task_notes=task_notes,
+                task_status=task_status)
 
     return tasks_tree
 
