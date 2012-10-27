@@ -212,10 +212,6 @@ def parse_text(text):
         try:
             # assign task_depth; root depth starts at 0
             num_asterisks_and_space = len(matches[0][0])
-            indent_level = num_asterisks_and_space - 2
-            
-            # strip off asterisks-and-space prefix
-            line = line[num_asterisks_and_space:]
             
             # if we get to this point, then it means that a new task is
             # starting on this line -- we need to add the last-parsed task
@@ -231,6 +227,11 @@ def parse_text(text):
                 # this is the first task, so skip adding a task to the
                 # tree, and record that we've encountered our first task
                 seen_first_task = True
+            
+            indent_level = num_asterisks_and_space - 2
+            
+            # strip off asterisks-and-space prefix
+            line = line[num_asterisks_and_space:]
             
             if matches[0][2] == 'DONE ':
                 task_status = 'completed'
