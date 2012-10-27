@@ -19,6 +19,8 @@ from xdg.BaseDirectory import save_config_path, save_data_path
 import os.path
 import sys
 import re
+import cStringIO
+
 
 class TasksTree(object):
     """
@@ -187,77 +189,89 @@ def erase_todolist(list_id):
         service.tasks().delete(tasklist=list_id,
                 task=task['id']).execute()
 
-def parse(path):
-    """Parses a todolist file and returns a tree"""
+
+def parse_path(path):
+    """Parses an org-mode file and returns a tree"""
+    file_lines = open(path, "r").readlines()
+    file_text = "".join(file_lines)
+    return parse_text(file_text)
+    
+def parse_text(text):
+    """Parses an org-mode formatted block of text and returns a tree"""
+    # create a (read-only) file object containing *text*
+    f = cStringIO.StringIO(text)
+    
     headline_regex = re.compile("^(\*+ )( *)(DONE )?")
     tasks_tree = TasksTree()
-    with open(path) as f:
-        last_indent_level = 0
-        seen_first_task = False
-        for n, line in enumerate(f):
-            matches = headline_regex.findall(line)
-            line = line.rstrip("\n")
-            try:
-                # assign task_depth; root depth starts at 0
-                num_asterisks_and_space = len(matches[0][0])
-                indent_level = num_asterisks_and_space - 2
-                
-                # strip off asterisks-and-space prefix
-                line = line[num_asterisks_and_space:]
-                
-                # if we get to this point, then it means that a new task is
-                # starting on this line -- we need to add the last-parsed task
-                # to the tree (if this isn't the first task encountered)
-                
-                if seen_first_task:
-                    # add the task to the tree
-                    tasks_tree.last(indent_level).add_subtask(
-                            title=task_title,
-                            task_notes=task_notes,
-                            task_status=task_status)
-                else:
-                    # this is the first task, so skip adding a task to the
-                    # tree, and record that we've encountered our first task
-                    seen_first_task = True
-                
-                if matches[0][2] == 'DONE ':
-                    task_status = 'completed'
-                    # number of spaces preceeding 'DONE' and after
-                    # asterisks+single-space
-                    num_extra_spaces = len(matches[0][1])
-                    # remove the '[ ...]DONE ' from the line
-                    line = line[num_extra_spaces + len('DONE '):]
-                else:
-                    task_status = 'needsAction'
-                
-                task_title = line
-                task_notes = None
-            except IndexError:
-                # this is not a task, but a task-notes line
-                if task_notes is None:
-                    task_notes = line
-                else:
-                    task_notes += "\n" + line
+    
+    last_indent_level = 0
+    seen_first_task = False
+    for n, line in enumerate(f):
+        matches = headline_regex.findall(line)
+        line = line.rstrip("\n")
+        try:
+            # assign task_depth; root depth starts at 0
+            num_asterisks_and_space = len(matches[0][0])
+            indent_level = num_asterisks_and_space - 2
             
-            assert indent_level <= last_indent_level + 1, ("line %d: "
-                    "subtask has no parent task" % n)
-            last_indent_level = indent_level
+            # strip off asterisks-and-space prefix
+            line = line[num_asterisks_and_space:]
+            
+            # if we get to this point, then it means that a new task is
+            # starting on this line -- we need to add the last-parsed task
+            # to the tree (if this isn't the first task encountered)
+            
+            if seen_first_task:
+                # add the task to the tree
+                tasks_tree.last(indent_level).add_subtask(
+                        title=task_title,
+                        task_notes=task_notes,
+                        task_status=task_status)
+            else:
+                # this is the first task, so skip adding a task to the
+                # tree, and record that we've encountered our first task
+                seen_first_task = True
+            
+            if matches[0][2] == 'DONE ':
+                task_status = 'completed'
+                # number of spaces preceeding 'DONE' and after
+                # asterisks+single-space
+                num_extra_spaces = len(matches[0][1])
+                # remove the '[ ...]DONE ' from the line
+                line = line[num_extra_spaces + len('DONE '):]
+            else:
+                task_status = 'needsAction'
+            
+            task_title = line
+            task_notes = None
+        except IndexError:
+            # this is not a task, but a task-notes line
+            if task_notes is None:
+                task_notes = line
+            else:
+                task_notes += "\n" + line
         
-        # add the last task to the tree, since the for loop won't be iterated
-        # again after the last line of the file (tasks are added at beginning
-        # of the for loop)
-        tasks_tree.last(indent_level).add_subtask(
-                title=task_title,
-                task_notes=task_notes,
-                task_status=task_status)
+        assert indent_level <= last_indent_level + 1, ("line %d: "
+                "subtask has no parent task" % n)
+        last_indent_level = indent_level
+    # END: for loop
+    
+    # add the last task to the tree, since the for loop won't be iterated
+    # again after the last line of the file (tasks are added at beginning
+    # of the for loop)
+    tasks_tree.last(indent_level).add_subtask(
+            title=task_title,
+            task_notes=task_notes,
+            task_status=task_status)
 
+    f.close()
     return tasks_tree
 
 def push_todolist(path, list_name):
     """Pushes the specified file to the specified todolist"""
     service = get_service()
     list_id = get_list_id(service, list_name)
-    tasks_tree = parse(path)
+    tasks_tree = parse_path(path)
     erase_todolist(list_id)
     tasks_tree.push(service, list_id)
 
