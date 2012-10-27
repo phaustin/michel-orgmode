@@ -121,7 +121,9 @@ class TasksTree(object):
 
     def __str__(self):
         """string representation of the tree"""
-        return '\n'.join(self._lines(0))
+        # always add a trailing "\n" because text-files normally include a "\n"
+        # at the end of the last line of the file.
+        return '\n'.join(self._lines(0)) + "\n"
 
 def get_service():
     """
