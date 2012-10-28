@@ -43,7 +43,7 @@ class TasksTree(object):
         
     def __getitem__(self, key):
         return self.subtasks[key]
-    
+         
     def __setitem__(self, key, val):
         self.subtasks[key] = val
         
@@ -53,14 +53,17 @@ class TasksTree(object):
     def __len__(self):
         return len(self.subtasks)
 
-    def get(self, task_id):
+    def get_task_with_id(self, task_id):
         """Returns the task of given id"""
         if self.task_id == task_id:
             return self
         else:
+            # depth first search for id
             for subtask in self.subtasks:
-                if subtask.get(task_id) != None:
-                    return subtask.get(task_id)
+                if subtask.get_task_with_id(task_id) is not None:
+                    return subtask.get_task_with_id(task_id)
+            # if there are no subtasks to search
+            return None
 
     def add_subtask(self, title, task_id = None, parent_id = None,
             task_notes=None, task_status=None):
@@ -69,13 +72,14 @@ class TasksTree(object):
         - with the specified task_id
         - as a child of parent_id
         """
-        if not parent_id:
-            self.subtasks.append(TasksTree(title, task_id, task_notes, task_status))
+        if parent_id is None:
+            self.subtasks.append(
+                TasksTree(title, task_id, task_notes, task_status))
         else:
-            if not self.get(parent_id):
+            if self.get_task_with_id(parent_id) is None:
                 raise ValueError, "No element with suitable parent id"
-            self.get(parent_id).add_subtask(title, task_id, None, task_notes,
-                    task_status)
+            self.get_task_with_id(parent_id).add_subtask(title, task_id, None,
+                    task_notes, task_status)
     
     def add_subtree(self, tree_to_add, include_root=False, root_title=None,
             root_notes=None):
@@ -238,9 +242,14 @@ def get_list_id(service, list_name=None):
 
     return list_id
 
-
-def print_todolist(list_name=None):
-    """Prints the todo list of given id"""
+def get_gtask_list_as_tasktree(list_name=None):
+    """Get a TaskTree object representing a google tasks list.
+    
+    The Google Tasks list named *list_name* is retrieved, and converted into a
+    TaskTree object which is returned.  If *list_name* is not specified, then
+    the default Google-Tasks list will be used.
+    
+    """
     service = get_service()
     list_id = get_list_id(service, list_name)
     tasks = service.tasks().list(tasklist=list_id).execute()
@@ -255,6 +264,17 @@ def print_todolist(list_name=None):
         except ValueError:
             fail_count += 1
             tasklist.append(t)
+ 
+    return tasks_tree
+
+def print_todolist(list_name=None):
+    """Print an orgmode-formatted string representing a google tasks list.
+    
+    The Google Tasks list named *list_name* is used.  If *list_name* is not
+    specified, then the default Google-Tasks list will be used.
+    
+    """
+    tasks_tree = get_gtask_list_as_tasktree(list_name)
     print(tasks_tree)
 
 def erase_todolist(list_id):
