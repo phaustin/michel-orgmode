@@ -40,6 +40,18 @@ class TasksTree(object):
         self.notes = task_notes
         # *status* usually takes on the value 'completed' or 'needsAction'
         self.status = task_status
+        
+    def __getitem__(self, key):
+        return self.subtasks[key]
+    
+    def __setitem__(self, key, val):
+        self.subtasks[key] = val
+        
+    def __delitem__(self, key):
+        del(self.subtasks[key])
+    
+    def __len__(self):
+        return len(self.subtasks)
 
     def get(self, task_id):
         """Returns the task of given id"""
@@ -64,16 +76,54 @@ class TasksTree(object):
                 raise ValueError, "No element with suitable parent id"
             self.get(parent_id).add_subtask(title, task_id, None, task_notes,
                     task_status)
-
+    
+    def add_subtree(self, tree_to_add, include_root=False, root_title=None,
+            root_notes=None):
+        """Add *tree_to_add* as a subtree of this tree.
+        
+        If *include_root* is False, then the children of *tree_to_add* will be
+        added as children of this tree's root node.  Otherwise, the root node
+        of *tree_to_add* will be added as a child of this tree's root node.
+        
+        The *root_title* and *root_notes* arguments are optional, and can be
+        used to set the title and notes of *tree_to_add*'s root node when
+        *include_root* is True. 
+        
+        """
+        if not include_root:
+            self.subtasks.extend(tree_to_add.subtasks)
+        else:
+            if root_title is not None:
+                tree_to_add.title = root_title
+            if tree_to_add.title is None:
+                tree_to_add.title = ""
+                
+            if root_notes is not None:
+                tree_to_add.notes = root_notes
+            
+            self.subtasks.append(tree_to_add)
+    
     def last(self, level):
-        """Returns the last task added at a given level of the tree"""
+        """Return the last task added at a given level of the tree.
+        
+        Level 0 is the "root" node of the tree, and there is only one node at
+        this level, which contains all of the level 1 nodes (tasks/headlines).
+        
+        A TaskTree object is returned that corresponds to the last task having
+        the specified level.  This TaskTree object will have the last task as
+        the root node of the tree, and will maintain all of the node's
+        descendants.
+        
+        """
         if level == 0:
             return self
         else:
             res = None
             for subtask in self.subtasks:
-                res = subtask.last(level - 1) or res
-            if res:
+                x = subtask.last(level - 1)
+                if x is not None:
+                    res = x
+            if res is not None:
                 return res
 
     def push(self, service, list_id, parent = None, root=True):
@@ -120,10 +170,34 @@ class TasksTree(object):
 
 
     def __str__(self):
-        """string representation of the tree"""
+        """string representation of the tree.
+        
+        Only the root-node's children (and their descendents...) are printed,
+        not the root-node itself.
+        
+        """
         # always add a trailing "\n" because text-files normally include a "\n"
         # at the end of the last line of the file.
         return '\n'.join(self._lines(0)) + "\n"
+
+
+def concatenate_trees(t1, t2):
+    """Combine tree *t1*'s children with tree *t2*'s children.
+    
+    A tree is returned whose children include the children of *t1* and the
+    children of *t2*.  The root node of the returned tree is a dummy node
+    having no title.
+    
+    Note: children are treated as references, so modifying *t1* after creating
+    the combined tree will also modify the combined tree.
+    
+    """
+    joined_tree = TasksTree()
+    joined_tree.add_subtree(t1)
+    joined_tree.add_subtree(t2)
+    
+    return joined_tree
+
 
 def get_service():
     """

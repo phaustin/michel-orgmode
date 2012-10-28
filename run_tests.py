@@ -9,7 +9,6 @@ import michel.michel as m
 class TestMichel(unittest.TestCase):
     def setUp(self):
         pass
-    
     def test_text_to_tasktree(self):
         # text should have trailing "\n" character, like most textfiles
         org_text = textwrap.dedent("""\
@@ -19,7 +18,6 @@ class TestMichel(unittest.TestCase):
             * DONE    Headline 2
             ** Headline 2.1
             """)
-
         tasktree = m.parse_text(org_text)
         self.assertEqual(str(tasktree), org_text)
 
@@ -44,6 +42,46 @@ class TestMichel(unittest.TestCase):
         tasktree = m.parse_text(org_text)
         # a dummy headline will be added to contain the initial text
         self.assertEqual(str(tasktree), "* \n" + org_text)
+
+    def test_add_subtrees(self):
+        org_text1 = textwrap.dedent("""\
+            * Headline A1
+            * Headline A2
+            ** Headline A2.1
+            """)
+        org_text2 = textwrap.dedent("""\
+            * Headline B1
+            ** Headline B1.1
+            * Headline B2
+            """)
+        tree1 = m.parse_text(org_text1)
+        tree2 = m.parse_text(org_text2)
+        
+        # test tree concatenation
+        target_tree = m.concatenate_trees(tree1, tree2)
+        target_text = textwrap.dedent("""\
+            * Headline A1
+            * Headline A2
+            ** Headline A2.1
+            * Headline B1
+            ** Headline B1.1
+            * Headline B2
+            """)
+        self.assertEqual(str(target_tree), target_text)
+        
+        # test subtree grafting
+        # add tree2's children to first child of tree1
+        tree1[0].add_subtree(tree2)
+        target_tree = tree1
+        target_text = textwrap.dedent("""\
+            * Headline A1
+            ** Headline B1
+            *** Headline B1.1
+            ** Headline B2
+            * Headline A2
+            ** Headline A2.1
+            """)
+        self.assertEqual(str(target_tree), target_text)
 
 if __name__ == '__main__':
     unittest.main()
