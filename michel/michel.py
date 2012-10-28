@@ -15,7 +15,7 @@ from apiclient.discovery import build
 from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.tools import run
-from xdg.BaseDirectory import save_config_path, save_data_path
+from xdg.BaseDirectory import save_data_path #, save_config_path 
 import os.path
 import sys
 import re
@@ -206,8 +206,10 @@ def parse_text(text):
     headline_regex = re.compile("^(\*+ )( *)(DONE )?")
     tasks_tree = TasksTree()
     
+    indent_level = 0
     last_indent_level = 0
     seen_first_task = False
+    task_notes = None
     for n, line in enumerate(f):
         matches = headline_regex.findall(line)
         line = line.rstrip("\n")
@@ -226,7 +228,15 @@ def parse_text(text):
                         task_notes=task_notes,
                         task_status=task_status)
             else:
-                # this is the first task, so skip adding a task to the
+                if task_notes is not None:
+                    # this means there was some text at the beginning of the
+                    # file before any headline was encountered.  We create a
+                    # dummy headline to contain this text.
+                    tasks_tree.last(0).add_subtask(
+                            title="",
+                            task_notes=task_notes,
+                            task_status=None)
+                # this is the first task, so skip adding a last-task to the
                 # tree, and record that we've encountered our first task
                 seen_first_task = True
             
