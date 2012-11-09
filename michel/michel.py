@@ -20,7 +20,7 @@ import os.path
 import sys
 import re
 import cStringIO
-
+import diff3
 
 class TasksTree(object):
     """
@@ -202,6 +202,15 @@ def concatenate_trees(t1, t2):
     
     return joined_tree
 
+def treemerge(new_tree, old_tree, other_tree):
+    old = str(old_tree)
+    other = str(other_tree)
+    new = str(new_tree)
+    merged_text, was_conflict = diff3.merge3_text(new, old, other)
+    
+    merged_tree = parse_text(merged_text)
+    
+    return merged_tree, was_conflict
 
 def get_service():
     """
