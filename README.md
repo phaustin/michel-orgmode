@@ -1,7 +1,8 @@
 Michel-orgmode is a fork of [michel](https://github.com/chmduquesne/michel)
 which serves as a bridge between an [org-mode](http://orgmode.org/) textfile
 and a google-tasks task list.  It can push/pull org-mode text files to/from
-google tasks.
+google tasks, and perform bidirectional synchronization/merging between an
+org-mode text file and a google tasks list.
 
 Usage
 =====
