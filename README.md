@@ -22,17 +22,13 @@ Command line options
                   [--listname LISTNAME]
 
     optional arguments:
-        -h, --help           show this help message and exit
-        --push               replace LISTNAME with the contents of
-                             FILE.
-        --pull               replace FILE with the contents of
-                             LISTNAME.
-        --sync               synchronize changes between FILE and
-                             LISTNAME.
-        --orgfile FILE       An org-mode file to push from / pull to
-        --listname LISTNAME  A GTasks list to pull from / push to (default list if
-                             empty)
-
+      -h, --help           show this help message and exit
+      --push               replace LISTNAME with the contents of FILE.
+      --pull               replace FILE with the contents of LISTNAME.
+      --sync               synchronize changes between FILE and LISTNAME.
+      --orgfile FILE       An org-mode file to push from / pull to
+      --listname LISTNAME  A GTasks list to pull from / push to (default list if
+                           empty)
 
 Org-mode Syntax
 ---------------
