@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 """
-Pushes/pulls org-mode text files to google tasks
+michel-orgmode -- a script to push/pull an org-mode text file to/from a google
+                  tasks list.
 
-USAGE:
-  michel pull [list name]             prints the default tasklist to stdout
-                                      in org-mode format.
-  michel push <org-file> [list name]  replace the default tasklist with the
-                                      content of <org-file>.
 """
 from __future__ import with_statement
 import gflags
@@ -16,6 +12,7 @@ from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.tools import run
 from xdg.BaseDirectory import save_data_path #, save_config_path 
+import argparse
 import os.path
 import sys
 import re
@@ -392,30 +389,35 @@ def push_todolist(path, list_name):
     tasks_tree.push(service, list_id)
 
 def main():
-    if (len(sys.argv)) < 2:
-        print(__doc__)
-    elif sys.argv[1] == "pull":
-        if not len(sys.argv) > 2:
-            list_name = None
-        else:
-            list_name = sys.argv[2]
-        print_todolist(list_name)
-    elif sys.argv[1] == "push":
-        if len(sys.argv) < 3:
-            print("'push' expects at least 1 argument")
+    parser = argparse.ArgumentParser(description="Synchronize org-mode text" 
+                                           "files with a google-tasks list.")
+    
+    action = parser.add_mutually_exclusive_group(required=True)
+    action.add_argument("--push", action='store_true',
+            help='replace *gtasks_list_name* with the contents of *org_file*.')
+    action.add_argument("--pull", action='store_true',
+            help='prints the contents of *gtasks_list_name* to stdout in org-mode format.')
+    
+    parser.add_argument('--orgfile',
+            metavar='FILE',
+            help='An org-mode file to push from / pull to')
+    parser.add_argument('--listname',
+            help='A GTasks list to pull from / push to (default list if empty)')
+    
+    args = parser.parse_args()
+    
+    if args.push and not args.orgfile:
+        parser.error('--orgfile must be specified when using --push')
+    
+    if args.pull:
+        print_todolist(args.listname)
+    elif args.push:
+        if not os.path.exists(args.orgfile):
+            print("The org-file you want to push does not exist.")
             sys.exit(2)
-        path = sys.argv[2]
-        if not os.path.exists(path):
-            print("The file you want to push does not exist.")
-            sys.exit(2)
-        if not len(sys.argv) > 3:
-            list_name = None
-        else:
-            list_name = sys.argv[3]
-        push_todolist(path, list_name)
-    else:
-        print(__doc__)
-        sys.exit(2)
+        push_todolist(args.orgfile, args.listname)
+    elif args.sync:
+        pass
 
 if __name__ == "__main__":
     main()
