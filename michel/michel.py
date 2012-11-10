@@ -203,11 +203,11 @@ def treemerge(new_tree, old_tree, other_tree):
     old = str(old_tree)
     other = str(other_tree)
     new = str(new_tree)
-    merged_text, was_conflict = diff3.merge3_text(new, old, other)
+    merged_text, conflict_occurred = diff3.merge3_text(new, old, other)
     
     merged_tree = parse_text(merged_text)
     
-    return merged_tree, was_conflict
+    return merged_tree, conflict_occurred
 
 def get_service():
     """
@@ -400,6 +400,56 @@ def push_todolist(path, list_name):
     erase_todolist(list_id)
     tasks_tree.push(service, list_id)
 
+def store_current_tree(tree, listname):
+    "Store the current tree persistently for later use"
+    # dirty hack -- eventually will write to a persistent database
+    open("/tmp/curr_tree","wb").write(str(tree))
+
+def get_last_tree(listname):
+    if os.path.exists("/tmp/curr_tree"):
+        org_text = open("/tmp/curr_tree","rb").read()
+        tree = parse_text(org_text)
+        return tree
+    else:
+        return None
+
+def sync_todolist(path, list_name):
+    """Synchronizes the specified file with the specified todolist"""
+    gtasks_tree = get_gtask_list_as_tasktree(list_name)
+    orgfile_tree = parse_path(path)
+    orig_tree = get_last_tree(list_name)
+    if orig_tree is None:
+        # by default use the gtasks tree if no original tree is available
+        orig_tree = gtasks_tree
+    
+    merged_tree, conflict_occurred = treemerge(orgfile_tree, orig_tree, gtasks_tree)
+    
+    if conflict_occurred:
+        conflicted_filename = path + ".conflicted"
+        open(conflicted_filename, "wb").write(str(merged_tree))
+        print "\nWARNING:  Org-file and task-list could not be cleanly merged:  " \
+              "the attempted merge can be found in '%s'.  Please " \
+              "modify this file, copy it to '%s', and push '%s' back " \
+              "to the desired GTasks list.\n" % (conflicted_filename, path, path)
+        sys.exit(2)
+    else:
+        # store the successfully merged tree locally so we can use it as the
+        # original/base tree in future 3-way merges.
+        # TODO: do this also when pushing/pulling?
+        store_current_tree(merged_tree, list_name)
+        
+        # write merged tree to tasklist
+        service = get_service()
+        list_id = get_list_id(service, list_name)
+        erase_todolist(list_id)
+        merged_tree.push(service, list_id)
+        
+        # write merged tree to orgfile
+        f = open(path, 'wb')
+        f.write(str(merged_tree))
+        f.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Synchronize org-mode text" 
                                            "files with a google-tasks list.")
@@ -409,6 +459,8 @@ def main():
             help='replace *gtasks_list_name* with the contents of *org_file*.')
     action.add_argument("--pull", action='store_true',
             help='replace *org_file* with the contents of *gtasks_list_name*.')
+    action.add_argument("--sync", action='store_true',
+            help='synchronize changes between *org_file* and *gtasks_list_name*.')
     
     parser.add_argument('--orgfile',
             metavar='FILE',
@@ -420,6 +472,8 @@ def main():
     
     if args.push and not args.orgfile:
         parser.error('--orgfile must be specified when using --push')
+    if args.sync and not args.orgfile:
+        parser.error('--orgfile must be specified when using --sync')
     
     if args.pull:
         if args.orgfile is None:
@@ -432,7 +486,10 @@ def main():
             sys.exit(2)
         push_todolist(args.orgfile, args.listname)
     elif args.sync:
-        pass
+        if not os.path.exists(args.orgfile):
+            print("The org-file you want to synchronize does not exist.")
+            sys.exit(2)
+        sync_todolist(args.orgfile, args.listname)
 
 if __name__ == "__main__":
     main()
