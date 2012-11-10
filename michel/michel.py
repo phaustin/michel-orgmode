@@ -501,11 +501,11 @@ def main():
     
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--push", action='store_true',
-            help='replace *gtasks_list_name* with the contents of *org_file*.')
+            help='replace LISTNAME with the contents of FILE.')
     action.add_argument("--pull", action='store_true',
-            help='replace *org_file* with the contents of *gtasks_list_name*.')
+            help='replace FILE with the contents of LISTNAME.')
     action.add_argument("--sync", action='store_true',
-            help='synchronize changes between *org_file* and *gtasks_list_name*.')
+            help='synchronize changes between FILE and LISTNAME.')
     
     parser.add_argument('--orgfile',
             metavar='FILE',

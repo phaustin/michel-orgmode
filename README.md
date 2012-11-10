@@ -15,21 +15,27 @@ You're done!
 The authorization token is stored in `$XDG_DATA_HOME/michel/oauth.dat`. This
 is the only information stored.
 
-Commands
---------
+Command line options
+--------------------
 
-Michel keeps it simple. It only has two commands:
+    usage: michel [-h] (--push | --pull | --sync) [--orgfile FILE]
+                  [--listname LISTNAME]
 
-    michel.py pull [list name]
-Print the named (or default if no name is given) task list on the standard
-output.
+    optional arguments:
+        -h, --help           show this help message and exit
+        --push               replace LISTNAME with the contents of
+                             FILE.
+        --pull               replace FILE with the contents of
+                             LISTNAME.
+        --sync               synchronize changes between FILE and
+                             LISTNAME.
+        --orgfile FILE       An org-mode file to push from / pull to
+        --listname LISTNAME  A GTasks list to pull from / push to (default list if
+                             empty)
 
-    michel.py push <TODO.org> [list name]
-Replace the named (or default if no name is given) task list with the contents
-of TODO.org
 
-Syntax
-------
+Org-mode Syntax
+---------------
 
 This script currently only supports a subset of the org-mode format.  The
 following elements are mapped mapped between google-tasks and an org-mode file:
@@ -38,23 +44,6 @@ following elements are mapped mapped between google-tasks and an org-mode file:
 * Task Notes <-> Headline's body text
 * Checked-off / crossed-out <-> Headline is marked as DONE
 
-How to
-------
-
-Here is how michel can be used. A crontask pulls every 15 minutes the
-default TODO list, and another one displays a notification during 10
-seconds every hour (requires notify-send).
-
-    */15 * * * * /path/to/michel.py pull > /tmp/TODO && mv /tmp/TODO ~/.TODO
-    0 * * * * DISPLAY=":0.0" notify-send -t 10000 TODO "$(cat ~/.TODO)"
-
-After you modify your TODO list, don't forget to push it!
-
-    michel.py push .TODO
-
-If this trick is not working, it is probably because the variable PATH
-does not contains /usr/local/bin in crontab. You might want to set it
-manually. See 'man 5 crontab'.
 
 Installation Dependencies
 =========================
