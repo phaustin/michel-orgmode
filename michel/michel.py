@@ -16,6 +16,7 @@ import argparse
 import os.path
 import sys
 import re
+import cPickle as pickle
 import cStringIO
 import diff3
 
@@ -181,7 +182,52 @@ class TasksTree(object):
         # at the end of the last line of the file.
         return '\n'.join(self._lines(0)) + "\n"
 
+def database_read(key):
+    """Fetch an object from the persistent database stored under *key*.
+    
+    Returns an object pulled out of the persistent database which was stored
+    using *key*.  If no such key exists, None is returned.
+    
+    """
+    db_path = os.path.join(save_data_path("michel"), "config_data.pkl")
+    try:
+        with open(db_path, "rb") as db_file:
+            db_dict = pickle.load(db_file)
+    except IOError: # typically because file doesn't exist
+        db_dict = {}
+    
+    obj = db_dict.get(key)
+    
+    return obj
 
+def database_write(key, obj):
+    "Store an arbitrary object *obj* in the persistent database under *key*."
+    db_path = os.path.join(save_data_path("michel"), "config_data.pkl")
+    try:
+        with open(db_path, "rb") as db_file:
+            db_dict = pickle.load(db_file)
+    except IOError: # typically because file doesn't exist
+        db_dict = {}
+    db_dict[key] = obj
+    with open(db_path, "wb") as db_file:
+        pickle.dump(db_dict, db_file, pickle.HIGHEST_PROTOCOL)
+
+def database_delete(key):
+    "Delete the object in the persistent database stored under *key*."
+    db_path = os.path.join(save_data_path("michel"), "config_data.pkl")
+    try:
+        with open(db_path, "rb") as db_file:
+            db_dict = pickle.load(db_file)
+    except AttributeError: # typically because file doesn't exist
+        db_dict = {}
+    
+    try:
+        del(db_dict[key])
+        with open(db_path, "wb") as db_file:
+            pickle.dump(db_dict, db_file, pickle.HIGHEST_PROTOCOL)
+    except KeyError:
+        pass
+    
 def concatenate_trees(t1, t2):
     """Combine tree *t1*'s children with tree *t2*'s children.
     
@@ -402,16 +448,15 @@ def push_todolist(path, list_name):
 
 def store_current_tree(tree, listname):
     "Store the current tree persistently for later use"
-    # dirty hack -- eventually will write to a persistent database
-    open("/tmp/curr_tree","wb").write(str(tree))
+    if listname is None:
+        listname = "_DEFAULT_"
+    database_write(listname+"_tree", tree)
 
 def get_last_tree(listname):
-    if os.path.exists("/tmp/curr_tree"):
-        org_text = open("/tmp/curr_tree","rb").read()
-        tree = parse_text(org_text)
-        return tree
-    else:
-        return None
+    if listname is None:
+        listname = "_DEFAULT_"
+    tree = database_read(listname+"_tree")
+    return tree
 
 def sync_todolist(path, list_name):
     """Synchronizes the specified file with the specified todolist"""
