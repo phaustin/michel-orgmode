@@ -282,6 +282,18 @@ def print_todolist(list_name=None):
     """
     tasks_tree = get_gtask_list_as_tasktree(list_name)
     print(tasks_tree)
+    
+def write_todolist(orgfile_path, list_name=None):
+    """Create an orgmode-formatted file representing a google tasks list.
+    
+    The Google Tasks list named *list_name* is used.  If *list_name* is not
+    specified, then the default Google-Tasks list will be used.
+    
+    """
+    tasks_tree = get_gtask_list_as_tasktree(list_name)
+    f = open(orgfile_path, 'wb')
+    f.write(str(tasks_tree))
+    f.close()
 
 def erase_todolist(list_id):
     """Erases the todo list of given id"""
@@ -396,7 +408,7 @@ def main():
     action.add_argument("--push", action='store_true',
             help='replace *gtasks_list_name* with the contents of *org_file*.')
     action.add_argument("--pull", action='store_true',
-            help='prints the contents of *gtasks_list_name* to stdout in org-mode format.')
+            help='replace *org_file* with the contents of *gtasks_list_name*.')
     
     parser.add_argument('--orgfile',
             metavar='FILE',
@@ -410,7 +422,10 @@ def main():
         parser.error('--orgfile must be specified when using --push')
     
     if args.pull:
-        print_todolist(args.listname)
+        if args.orgfile is None:
+            print_todolist(args.listname)
+        else:
+            write_todolist(args.orgfile, args.listname)
     elif args.push:
         if not os.path.exists(args.orgfile):
             print("The org-file you want to push does not exist.")
