@@ -132,16 +132,16 @@ class TasksTree(object):
         """Pushes the task tree to the given list"""
         # We do not want to push the root node
         if not root:
-            args = {'tasklist': list_id,
-                    'body': {
-                                'title': self.title,
-                                'notes': self.notes,
-                                'status': self.status
-                            }
-                   }
+            insert_cmd_args = {'tasklist': list_id,
+                               'body': {
+                                           'title': self.title,
+                                           'notes': self.notes,
+                                           'status': self.status
+                                       }
+                              }
             if parent:
-                args['parent'] = parent
-            res = service.tasks().insert(**args).execute()
+                insert_cmd_args['parent'] = parent
+            res = service.tasks().insert(**insert_cmd_args).execute()
             self.task_id = res['id']
         # the API head inserts, so we insert in reverse.
         for subtask in reversed(self.subtasks):
@@ -254,14 +254,16 @@ def treemerge(new_tree, old_tree, other_tree):
     merged_tree = parse_text(merged_text)
     
     return merged_tree, conflict_occurred
-
-def get_service():
+ 
+def get_service(profile_name=None):
     """
     Handle oauth's shit (copy-pasta from
     http://code.google.com/apis/tasks/v1/using.html)
     Yes I do publish a secret key here, apparently it is normal
     http://stackoverflow.com/questions/7274554/why-google-native-oauth2-flow-require-client-secret
     """
+    if profile_name is None:
+        profile_name = '__default'
     FLAGS = gflags.FLAGS
     FLOW = OAuth2WebServerFlow(
             client_id='617841371351.apps.googleusercontent.com',
@@ -269,7 +271,8 @@ def get_service():
             scope='https://www.googleapis.com/auth/tasks',
             user_agent='michel/0.0.1')
     FLAGS.auth_local_webserver = False
-    storage = Storage(os.path.join(save_data_path("michel"), "oauth.dat"))
+    auth_filename = profile_name + "_oauth.dat"
+    storage = Storage(os.path.join(save_data_path("michel"), auth_filename))
     credentials = storage.get()
     if credentials is None or credentials.invalid == True:
         credentials = run(FLOW, storage)
@@ -294,7 +297,7 @@ def get_list_id(service, list_name=None):
 
     return list_id
 
-def get_gtask_list_as_tasktree(list_name=None):
+def get_gtask_list_as_tasktree(list_name=None, profile=None):
     """Get a TaskTree object representing a google tasks list.
     
     The Google Tasks list named *list_name* is retrieved, and converted into a
@@ -302,7 +305,7 @@ def get_gtask_list_as_tasktree(list_name=None):
     the default Google-Tasks list will be used.
     
     """
-    service = get_service()
+    service = get_service(profile)
     list_id = get_list_id(service, list_name)
     tasks = service.tasks().list(tasklist=list_id).execute()
     tasks_tree = TasksTree()
@@ -319,31 +322,31 @@ def get_gtask_list_as_tasktree(list_name=None):
  
     return tasks_tree
 
-def print_todolist(list_name=None):
+def print_todolist(list_name=None, profile=None):
     """Print an orgmode-formatted string representing a google tasks list.
     
     The Google Tasks list named *list_name* is used.  If *list_name* is not
     specified, then the default Google-Tasks list will be used.
     
     """
-    tasks_tree = get_gtask_list_as_tasktree(list_name)
+    tasks_tree = get_gtask_list_as_tasktree(list_name, profile)
     print(tasks_tree)
     
-def write_todolist(orgfile_path, list_name=None):
+def write_todolist(orgfile_path, list_name=None, profile=None):
     """Create an orgmode-formatted file representing a google tasks list.
     
     The Google Tasks list named *list_name* is used.  If *list_name* is not
     specified, then the default Google-Tasks list will be used.
     
     """
-    tasks_tree = get_gtask_list_as_tasktree(list_name)
+    tasks_tree = get_gtask_list_as_tasktree(list_name, profile)
     f = open(orgfile_path, 'wb')
     f.write(str(tasks_tree))
     f.close()
 
-def erase_todolist(list_id):
+def erase_todolist(list_id, profile=None):
     """Erases the todo list of given id"""
-    service = get_service()
+    service = get_service(profile)
     tasks = service.tasks().list(tasklist=list_id).execute()
     for task in tasks.get('items', []):
         service.tasks().delete(tasklist=list_id,
@@ -438,12 +441,12 @@ def parse_text(text):
     f.close()
     return tasks_tree
 
-def push_todolist(path, list_name):
+def push_todolist(path, list_name, profile=None):
     """Pushes the specified file to the specified todolist"""
-    service = get_service()
+    service = get_service(profile)
     list_id = get_list_id(service, list_name)
     tasks_tree = parse_path(path)
-    erase_todolist(list_id)
+    erase_todolist(list_id, profile)
     tasks_tree.push(service, list_id)
 
 def store_current_tree(tree, listname):
@@ -458,9 +461,9 @@ def get_last_tree(listname):
     tree = database_read(listname+"_tree")
     return tree
 
-def sync_todolist(path, list_name):
+def sync_todolist(path, list_name, profile=None):
     """Synchronizes the specified file with the specified todolist"""
-    gtasks_tree = get_gtask_list_as_tasktree(list_name)
+    gtasks_tree = get_gtask_list_as_tasktree(list_name, profile)
     orgfile_tree = parse_path(path)
     orig_tree = get_last_tree(list_name)
     if orig_tree is None:
@@ -484,9 +487,9 @@ def sync_todolist(path, list_name):
         store_current_tree(merged_tree, list_name)
         
         # write merged tree to tasklist
-        service = get_service()
+        service = get_service(profile)
         list_id = get_list_id(service, list_name)
-        erase_todolist(list_id)
+        erase_todolist(list_id, profile)
         merged_tree.push(service, list_id)
         
         # write merged tree to orgfile
@@ -510,6 +513,13 @@ def main():
     parser.add_argument('--orgfile',
             metavar='FILE',
             help='An org-mode file to push from / pull to')
+    # TODO: replace the --profile flag with a URL-like scheme for specifying
+    # data sources. (e.g. using file:///path/to/orgfile or
+    # gtasks://profile/listname, and having only --from and --to flags)
+    parser.add_argument('--profile',
+            required=False,
+            help='A user-defined name profile name to distinguish between '
+                 'different google accounts')
     parser.add_argument('--listname',
             help='A GTasks list to pull from / push to (default list if empty)')
     
@@ -522,19 +532,19 @@ def main():
     
     if args.pull:
         if args.orgfile is None:
-            print_todolist(args.listname)
+            print_todolist(args.listname, args.profile)
         else:
-            write_todolist(args.orgfile, args.listname)
+            write_todolist(args.orgfile, args.listname, args.profile)
     elif args.push:
         if not os.path.exists(args.orgfile):
             print("The org-file you want to push does not exist.")
             sys.exit(2)
-        push_todolist(args.orgfile, args.listname)
+        push_todolist(args.orgfile, args.listname, args.profile)
     elif args.sync:
         if not os.path.exists(args.orgfile):
             print("The org-file you want to synchronize does not exist.")
             sys.exit(2)
-        sync_todolist(args.orgfile, args.listname)
+        sync_todolist(args.orgfile, args.listname, args.profile)
 
 if __name__ == "__main__":
     main()
