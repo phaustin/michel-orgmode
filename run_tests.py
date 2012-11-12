@@ -43,6 +43,24 @@ class TestMichel(unittest.TestCase):
         # a dummy headline will be added to contain the initial text
         self.assertEqual(str(tasktree), "* \n" + org_text)
 
+    def test_no_headlines(self):
+        """
+        Test the cases where there are no headlines at all in the file.
+        
+        """
+        # text should have trailing "\n" character, like most textfiles
+        org_text1 = textwrap.dedent("""\
+
+            Some non-headline text...
+            Another line of it.
+            """)
+        org_text2 = "" # empty file
+
+        for org_text in [org_text1, org_text2]:
+            tasktree = m.parse_text(org_text)
+            # a dummy headline will be added to contain the initial text
+            self.assertEqual(str(tasktree), "* \n" + org_text)
+
     def test_add_subtrees(self):
         org_text1 = textwrap.dedent("""\
             * Headline A1

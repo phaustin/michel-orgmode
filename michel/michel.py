@@ -371,6 +371,7 @@ def parse_text(text):
     last_indent_level = 0
     seen_first_task = False
     task_notes = None
+    task_title = None
     for n, line in enumerate(f):
         matches = headline_regex.findall(line)
         line = line.rstrip("\n")
@@ -433,10 +434,16 @@ def parse_text(text):
     # add the last task to the tree, since the for loop won't be iterated
     # again after the last line of the file (tasks are added at beginning
     # of the for loop)
-    tasks_tree.last(indent_level).add_subtask(
-            title=task_title,
-            task_notes=task_notes,
-            task_status=task_status)
+    if task_title is not None:
+        tasks_tree.last(indent_level).add_subtask(
+                title=task_title,
+                task_notes=task_notes,
+                task_status=task_status)
+    else: # there are no headlines in the org-file; create a dummy headline
+        tasks_tree.last(0).add_subtask(
+                title="",
+                task_notes=task_notes,
+                task_status=None)
 
     f.close()
     return tasks_tree
