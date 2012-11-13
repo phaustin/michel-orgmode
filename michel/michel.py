@@ -525,7 +525,7 @@ def main():
     # gtasks://profile/listname, and having only --from and --to flags)
     parser.add_argument('--profile',
             required=False,
-            help='A user-defined name profile name to distinguish between '
+            help='A user-defined profile name to distinguish between '
                  'different google accounts')
     parser.add_argument('--listname',
             help='A GTasks list to pull from / push to (default list if empty)')
