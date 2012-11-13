@@ -14,6 +14,7 @@ from oauth2client.tools import run
 from xdg.BaseDirectory import save_data_path #, save_config_path 
 import argparse
 import os.path
+import shutil
 import sys
 import re
 import cPickle as pickle
@@ -255,15 +256,13 @@ def treemerge(new_tree, old_tree, other_tree):
     
     return merged_tree, conflict_occurred
  
-def get_service(profile_name=None):
+def get_service(profile_name):
     """
     Handle oauth's shit (copy-pasta from
     http://code.google.com/apis/tasks/v1/using.html)
     Yes I do publish a secret key here, apparently it is normal
     http://stackoverflow.com/questions/7274554/why-google-native-oauth2-flow-require-client-secret
     """
-    if profile_name is None:
-        profile_name = '__default'
     FLAGS = gflags.FLAGS
     FLOW = OAuth2WebServerFlow(
             client_id='617841371351.apps.googleusercontent.com',
@@ -297,7 +296,7 @@ def get_list_id(service, list_name=None):
 
     return list_id
 
-def get_gtask_list_as_tasktree(list_name=None, profile=None):
+def get_gtask_list_as_tasktree(profile, list_name=None):
     """Get a TaskTree object representing a google tasks list.
     
     The Google Tasks list named *list_name* is retrieved, and converted into a
@@ -322,29 +321,29 @@ def get_gtask_list_as_tasktree(list_name=None, profile=None):
  
     return tasks_tree
 
-def print_todolist(list_name=None, profile=None):
+def print_todolist(profile, list_name=None):
     """Print an orgmode-formatted string representing a google tasks list.
     
     The Google Tasks list named *list_name* is used.  If *list_name* is not
     specified, then the default Google-Tasks list will be used.
     
     """
-    tasks_tree = get_gtask_list_as_tasktree(list_name, profile)
+    tasks_tree = get_gtask_list_as_tasktree(profile, list_name)
     print(tasks_tree)
     
-def write_todolist(orgfile_path, list_name=None, profile=None):
+def write_todolist(orgfile_path, profile, list_name=None):
     """Create an orgmode-formatted file representing a google tasks list.
     
     The Google Tasks list named *list_name* is used.  If *list_name* is not
     specified, then the default Google-Tasks list will be used.
     
     """
-    tasks_tree = get_gtask_list_as_tasktree(list_name, profile)
+    tasks_tree = get_gtask_list_as_tasktree(profile, list_name)
     f = open(orgfile_path, 'wb')
     f.write(str(tasks_tree))
     f.close()
 
-def erase_todolist(list_id, profile=None):
+def erase_todolist(profile, list_id):
     """Erases the todo list of given id"""
     service = get_service(profile)
     tasks = service.tasks().list(tasklist=list_id).execute()
@@ -448,61 +447,72 @@ def parse_text(text):
     f.close()
     return tasks_tree
 
-def push_todolist(path, list_name, profile=None):
+def push_todolist(path, profile, list_name):
     """Pushes the specified file to the specified todolist"""
     service = get_service(profile)
     list_id = get_list_id(service, list_name)
     tasks_tree = parse_path(path)
-    erase_todolist(list_id, profile)
+    erase_todolist(profile, list_id)
     tasks_tree.push(service, list_id)
 
-def store_current_tree(tree, listname):
+def store_current_tree(tree, profile, listname):
     "Store the current tree persistently for later use"
     if listname is None:
         listname = "_DEFAULT_"
-    database_write(listname+"_tree", tree)
+    database_write(profile + "__" + listname + "_tree", tree)
 
-def get_last_tree(listname):
+def get_last_tree(profile, listname):
     if listname is None:
         listname = "_DEFAULT_"
-    tree = database_read(listname+"_tree")
+    tree = database_read(profile + "__" + listname + "_tree")
     return tree
 
-def sync_todolist(path, list_name, profile=None):
+def sync_todolist(path, profile, list_name):
     """Synchronizes the specified file with the specified todolist"""
-    gtasks_tree = get_gtask_list_as_tasktree(list_name, profile)
+    gtasks_tree = get_gtask_list_as_tasktree(profile, list_name)
     orgfile_tree = parse_path(path)
-    orig_tree = get_last_tree(list_name)
+    orig_tree = get_last_tree(profile, list_name)
     if orig_tree is None:
-        # by default use the gtasks tree if no original tree is available
-        orig_tree = gtasks_tree
+        # by default keep the gtasks tree if no original tree is available --
+        # this requires setting the original tree to the orgfile tree.
+        orig_tree = orgfile_tree
+        
+        # save a local backup of the gtasks tree to avoid data-loss
+        bkup_fname = path + ".orig"
+        shutil.copyfile(path, bkup_fname)
+        
+        print ("\nWARNING: This is the first time syncing the '%s' list. "
+               "There is no way of knowing how best to merge the contents "
+               "of this list with the contents of the org-file.  Therefore, "
+               "'%s' has been updated to contain the contents of the "
+               "list, and a backup of this file has been created "
+               "as '%s'.  Please update '%s' as desired, and re-run "
+               "the synchronization.\n") % (list_name, path, bkup_fname, path)
     
     merged_tree, conflict_occurred = treemerge(orgfile_tree, orig_tree, gtasks_tree)
     
     if conflict_occurred:
         conflicted_filename = path + ".conflicted"
         open(conflicted_filename, "wb").write(str(merged_tree))
-        print "\nWARNING:  Org-file and task-list could not be cleanly merged:  " \
-              "the attempted merge can be found in '%s'.  Please " \
-              "modify this file, copy it to '%s', and push '%s' back " \
-              "to the desired GTasks list.\n" % (conflicted_filename, path, path)
+        print ("\nWARNING:  Org-file and task-list could not be cleanly merged:  "
+              "the attempted merge can be found in '%s'.  Please "
+              "modify this file, copy it to '%s', and push '%s' back "
+              "to the desired GTasks list.\n") % (conflicted_filename, path, path)
         sys.exit(2)
     else:
         # store the successfully merged tree locally so we can use it as the
         # original/base tree in future 3-way merges.
         # TODO: do this also when pushing/pulling?
-        store_current_tree(merged_tree, list_name)
+        store_current_tree(merged_tree, profile, list_name)
         
         # write merged tree to tasklist
         service = get_service(profile)
         list_id = get_list_id(service, list_name)
-        erase_todolist(list_id, profile)
+        erase_todolist(profile, list_id)
         merged_tree.push(service, list_id)
         
         # write merged tree to orgfile
-        f = open(path, 'wb')
-        f.write(str(merged_tree))
-        f.close()
+        open(path, 'wb').write(str(merged_tree))
 
 
 def main():
@@ -524,6 +534,7 @@ def main():
     # data sources. (e.g. using file:///path/to/orgfile or
     # gtasks://profile/listname, and having only --from and --to flags)
     parser.add_argument('--profile',
+            default="__default",
             required=False,
             help='A user-defined profile name to distinguish between '
                  'different google accounts')
@@ -539,19 +550,19 @@ def main():
     
     if args.pull:
         if args.orgfile is None:
-            print_todolist(args.listname, args.profile)
+            print_todolist(args.profile, args.listname)
         else:
-            write_todolist(args.orgfile, args.listname, args.profile)
+            write_todolist(args.orgfile, args.profile, args.listname)
     elif args.push:
         if not os.path.exists(args.orgfile):
             print("The org-file you want to push does not exist.")
             sys.exit(2)
-        push_todolist(args.orgfile, args.listname, args.profile)
+        push_todolist(args.orgfile, args.profile, args.listname)
     elif args.sync:
         if not os.path.exists(args.orgfile):
             print("The org-file you want to synchronize does not exist.")
             sys.exit(2)
-        sync_todolist(args.orgfile, args.listname, args.profile)
+        sync_todolist(args.orgfile, args.profile, args.listname)
 
 if __name__ == "__main__":
     main()
