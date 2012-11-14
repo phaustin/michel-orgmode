@@ -48,7 +48,7 @@ class TasksTree(object):
         
     def __delitem__(self, key):
         del(self.subtasks[key])
-    
+
     def __len__(self):
         return len(self.subtasks)
 
@@ -79,7 +79,7 @@ class TasksTree(object):
                 raise ValueError, "No element with suitable parent id"
             self.get_task_with_id(parent_id).add_subtask(title, task_id, None,
                     task_notes, task_status)
-    
+
     def add_subtree(self, tree_to_add, include_root=False, root_title=None,
             root_notes=None):
         """Add *tree_to_add* as a subtree of this tree.
@@ -105,8 +105,8 @@ class TasksTree(object):
                 tree_to_add.notes = root_notes
             
             self.subtasks.append(tree_to_add)
-    
-    def last(self, level):
+
+    def last_task_node_at_level(self, level):
         """Return the last task added at a given level of the tree.
         
         Level 0 is the "root" node of the tree, and there is only one node at
@@ -123,7 +123,7 @@ class TasksTree(object):
         else:
             res = None
             for subtask in self.subtasks:
-                x = subtask.last(level - 1)
+                x = subtask.last_task_node_at_level(level - 1)
                 if x is not None:
                     res = x
             if res is not None:
@@ -252,7 +252,7 @@ def treemerge(new_tree, old_tree, other_tree):
     new = str(new_tree)
     merged_text, conflict_occurred = diff3.merge3_text(new, old, other)
     
-    merged_tree = parse_text(merged_text)
+    merged_tree = parse_text_to_tree(merged_text)
     
     return merged_tree, conflict_occurred
  
@@ -356,9 +356,9 @@ def parse_path(path):
     """Parses an org-mode file and returns a tree"""
     file_lines = open(path, "r").readlines()
     file_text = "".join(file_lines)
-    return parse_text(file_text)
+    return parse_text_to_tree(file_text)
     
-def parse_text(text):
+def parse_text_to_tree(text):
     """Parses an org-mode formatted block of text and returns a tree"""
     # create a (read-only) file object containing *text*
     f = cStringIO.StringIO(text)
@@ -384,7 +384,7 @@ def parse_text(text):
             
             if seen_first_task:
                 # add the task to the tree
-                tasks_tree.last(indent_level).add_subtask(
+                tasks_tree.last_task_node_at_level(indent_level).add_subtask(
                         title=task_title,
                         task_notes=task_notes,
                         task_status=task_status)
@@ -393,7 +393,7 @@ def parse_text(text):
                     # this means there was some text at the beginning of the
                     # file before any headline was encountered.  We create a
                     # dummy headline to contain this text.
-                    tasks_tree.last(0).add_subtask(
+                    tasks_tree.last_task_node_at_level(0).add_subtask(
                             title="",
                             task_notes=task_notes,
                             task_status=None)
@@ -434,12 +434,12 @@ def parse_text(text):
     # again after the last line of the file (tasks are added at beginning
     # of the for loop)
     if task_title is not None:
-        tasks_tree.last(indent_level).add_subtask(
+        tasks_tree.last_task_node_at_level(indent_level).add_subtask(
                 title=task_title,
                 task_notes=task_notes,
                 task_status=task_status)
     else: # there are no headlines in the org-file; create a dummy headline
-        tasks_tree.last(0).add_subtask(
+        tasks_tree.last_task_node_at_level(0).add_subtask(
                 title="",
                 task_notes=task_notes,
                 task_status=None)
