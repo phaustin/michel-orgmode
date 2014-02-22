@@ -9,3 +9,5 @@ Having a naming scheme like this removes the need to hard-code the type of the d
 ** Figure out how to identify whether a google-tasks list is currently being edited, and postpone syncing until it is no longer being edited and remains so for a certain period of time.  Might be able to use the "updated" timestamp provided from the GTasks API representation of a task.
 ** More intelligent sync using task GUIDs provided by google, stored as properties of the org-mode headlines
 ** only allow syncing when diff3.py is present and the diff3 program exists
+** Mode where multiple Gtasks-lists can be synced to a single org-mode file
+The idea is to have an org-mode file whose top-level headings corresponded to different google-tasks lists.  Each heading would have a properties drawer with some properties indicating which michel-profile and gtasks list-name the heading corresponds to.
