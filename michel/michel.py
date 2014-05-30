@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 michel-orgmode -- a script to push/pull an org-mode text file to/from a google
                   tasks list.
@@ -155,9 +156,9 @@ class TasksTree(object):
             #indentations = '\t' * level
             # add number of asterisks corresponding to depth of task, followed
             # by "DONE" if the task is marked as completed.
-            done_string = ""
+            done_string = u""
             if (subtask.status is not None) and (subtask.status == "completed"):
-                done_string = " DONE"
+                done_string = u" DONE"
             indentations = '*' * (level+1) + done_string + " "
             res.append(indentations + subtask.title)
             if subtask.notes is not None:
@@ -181,7 +182,15 @@ class TasksTree(object):
         """
         # always add a trailing "\n" because text-files normally include a "\n"
         # at the end of the last line of the file.
-        return '\n'.join(self._lines(0)) + "\n"
+        return u'\n'.join(self._lines(0)) + u"\n"
+
+    def _print(self):
+        print(self.__str__())
+
+    def write_to_orgfile(self, fname):
+        f = open(fname, 'wb')
+        f.write(self.__str__().encode('utf-8'))
+        f.close()
 
 def database_read(key):
     """Fetch an object from the persistent database stored under *key*.
@@ -329,8 +338,8 @@ def print_todolist(profile, list_name=None):
     
     """
     tasks_tree = get_gtask_list_as_tasktree(profile, list_name)
-    print(tasks_tree)
-    
+    tasks_tree._print()
+
 def write_todolist(orgfile_path, profile, list_name=None):
     """Create an orgmode-formatted file representing a google tasks list.
     
@@ -339,9 +348,7 @@ def write_todolist(orgfile_path, profile, list_name=None):
     
     """
     tasks_tree = get_gtask_list_as_tasktree(profile, list_name)
-    f = open(orgfile_path, 'wb')
-    f.write(str(tasks_tree))
-    f.close()
+    tasks_tree.write_to_orgfile(orgfile_path)
 
 def erase_todolist(profile, list_id):
     """Erases the todo list of given id"""

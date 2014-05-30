@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 Suite of unit-tests for testing Michel
 """
@@ -18,8 +19,21 @@ class TestMichel(unittest.TestCase):
             * DONE    Headline 2
             ** Headline 2.1
             """)
-        tasktree = m.parse_text(org_text)
+        tasktree = m.parse_text_to_tree(org_text)
         self.assertEqual(str(tasktree), org_text)
+
+    def test_unicode_print_and_dump_to_file(self):
+        """
+        Test ability to print unicode text, and pull unicode into orgfile
+        """
+        #tasks_tree = m.get_gtask_list_as_tasktree("__default", "_DEFAULT_")
+        tasks_tree = m.TasksTree()
+        tasks_tree.add_subtask(u"Title", 1, None, u'viele Grüße', 'status')
+
+        tasks_tree._print()
+        import tempfile
+        fname = tempfile.NamedTemporaryFile().name
+        tasks_tree.write_to_orgfile(fname)
 
     def test_initial_non_headline_text(self):
         """
@@ -39,7 +53,7 @@ class TestMichel(unittest.TestCase):
             ** Headline 2.1
             """)
 
-        tasktree = m.parse_text(org_text)
+        tasktree = m.parse_text_to_tree(org_text)
         # a dummy headline will be added to contain the initial text
         self.assertEqual(str(tasktree), "* \n" + org_text)
 
@@ -57,7 +71,7 @@ class TestMichel(unittest.TestCase):
         org_text2 = "" # empty file
 
         for org_text in [org_text1, org_text2]:
-            tasktree = m.parse_text(org_text)
+            tasktree = m.parse_text_to_tree(org_text)
             # a dummy headline will be added to contain the initial text
             self.assertEqual(str(tasktree), "* \n" + org_text)
 
@@ -72,8 +86,8 @@ class TestMichel(unittest.TestCase):
             ** Headline B1.1
             * Headline B2
             """)
-        tree1 = m.parse_text(org_text1)
-        tree2 = m.parse_text(org_text2)
+        tree1 = m.parse_text_to_tree(org_text1)
+        tree2 = m.parse_text_to_tree(org_text2)
         
         # test tree concatenation
         target_tree = m.concatenate_trees(tree1, tree2)
@@ -127,9 +141,9 @@ class TestMichel(unittest.TestCase):
             * Headline B2 modified
             New B2 body text.
             """)
-        tree0 = m.parse_text(org_text0) # original tree
-        tree1 = m.parse_text(org_text1) # modified tree 1
-        tree2 = m.parse_text(org_text2) # modified tree 2
+        tree0 = m.parse_text_to_tree(org_text0) # original tree
+        tree1 = m.parse_text_to_tree(org_text1) # modified tree 1
+        tree2 = m.parse_text_to_tree(org_text2) # modified tree 2
         
         merged_tree, had_conflict = m.treemerge(tree1, tree0, tree2)
         self.assertTrue(had_conflict)
