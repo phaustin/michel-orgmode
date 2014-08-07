@@ -185,7 +185,7 @@ class TasksTree(object):
         return u'\n'.join(self._lines(0)) + u"\n"
 
     def _print(self):
-        print(self.__str__())
+        print(self.__str__().encode('utf-8'))
 
     def write_to_orgfile(self, fname):
         f = open(fname, 'wb')
@@ -339,7 +339,7 @@ def tasklist_to_tasktree(tasklist):
     while tasklist != [] and fail_count < 1000:
         t = tasklist.pop(0)
         try:
-            tasks_tree.add_subtask(t['title'].encode('utf-8'), t['id'],
+            tasks_tree.add_subtask(t['title'], t['id'],
                     t.get('parent'), t.get('notes'), t.get('status'))
         except ValueError:
             fail_count += 1
