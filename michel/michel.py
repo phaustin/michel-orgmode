@@ -316,10 +316,27 @@ def get_gtask_list_as_tasktree(profile, list_name=None):
     service = get_service(profile)
     list_id = get_list_id(service, list_name)
     tasks = service.tasks().list(tasklist=list_id).execute()
-    tasks_tree = TasksTree()
     tasklist = [t for t in tasks.get('items', [])]
+
+    return tasklist_to_tasktree(tasklist)
+
+def tasklist_to_tasktree(tasklist):
+    """Convert a list of task dictionaries to a task-tree.
+
+    Take a list of task-dictionaries, and convert them to a task-tree object.
+    Each dictionary can have the following keys:
+
+        title -- title of task [required]
+        id -- unique identification number of task [required]
+        parent -- unique identification number of task's parent
+        notes -- additional text describing task
+        status -- flag indicating whether or not task is crossed off
+
+    """
+    tasks_tree = TasksTree()
+
     fail_count = 0
-    while tasklist != [] and fail_count < 1000 :
+    while tasklist != [] and fail_count < 1000:
         t = tasklist.pop(0)
         try:
             tasks_tree.add_subtask(t['title'].encode('utf-8'), t['id'],
