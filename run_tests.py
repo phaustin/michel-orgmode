@@ -5,6 +5,8 @@ Suite of unit-tests for testing Michel
 """
 import unittest
 import textwrap
+import os
+import sys
 import michel.michel as m
 
 class TestMichel(unittest.TestCase):
@@ -26,14 +28,29 @@ class TestMichel(unittest.TestCase):
         """
         Test ability to print unicode text, and pull unicode into orgfile
         """
-        #tasks_tree = m.get_gtask_list_as_tasktree("__default", "_DEFAULT_")
-        tasks_tree = m.TasksTree()
-        tasks_tree.add_subtask(u"Title", 1, None, u'viele Grüße', 'status')
+        unicode_task = {
+            u'status': u'needsAction',
+            u'kind': u'tasks#task',
+            u'title': u'السلام عليكم',
+            u'notes': u'viele Grüße',
+            u'id': u'ABC123',
+            }
+        tasks_tree = m.tasklist_to_tasktree([unicode_task])
 
-        tasks_tree._print()
+        old_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+        try:
+            tasks_tree._print()
+        except UnicodeDecodeError:
+            self.fail("TasksTree._print() raised UnicodeDecodeError")
+        sys.stdout = old_stdout
+
         import tempfile
         fname = tempfile.NamedTemporaryFile().name
-        tasks_tree.write_to_orgfile(fname)
+        try:
+            tasks_tree.write_to_orgfile(fname)
+        except UnicodeDecodeError:
+            self.fail("TasksTree.write_to_orgfile() raised UnicodeDecodeError")
 
     def test_initial_non_headline_text(self):
         """
