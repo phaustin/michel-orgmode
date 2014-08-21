@@ -7,6 +7,7 @@ import unittest
 import textwrap
 import os
 import sys
+import tempfile
 import michel.michel as m
 
 class TestMichel(unittest.TestCase):
@@ -24,9 +25,9 @@ class TestMichel(unittest.TestCase):
         tasktree = m.parse_text_to_tree(org_text)
         self.assertEqual(str(tasktree), org_text)
 
-    def test_unicode_print_and_dump_to_file(self):
+    def test_unicode_print(self):
         """
-        Test ability to print unicode text, and pull unicode into orgfile
+        Test ability to print unicode text
         """
         unicode_task = {
             u'status': u'needsAction',
@@ -45,7 +46,19 @@ class TestMichel(unittest.TestCase):
             self.fail("TasksTree._print() raised UnicodeDecodeError")
         sys.stdout = old_stdout
 
-        import tempfile
+    def test_unicode_dump_to_file(self):
+        """
+        Test ability to pull unicode text into orgfile
+        """
+        unicode_task = {
+            u'status': u'needsAction',
+            u'kind': u'tasks#task',
+            u'title': u'السلام عليكم',
+            u'notes': u'viele Grüße',
+            u'id': u'ABC123',
+            }
+        tasks_tree = m.tasklist_to_tasktree([unicode_task])
+
         fname = tempfile.NamedTemporaryFile().name
         try:
             tasks_tree.write_to_orgfile(fname)
