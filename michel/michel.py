@@ -17,6 +17,11 @@ import argparse
 import os.path
 import shutil
 import sys
+# Set default encoding to 'UTF-8' instead of 'ascii'
+# http://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
+# Bad things might happen though
+reload(sys)
+sys.setdefaultencoding("UTF8")
 import re
 import cPickle as pickle
 import cStringIO
