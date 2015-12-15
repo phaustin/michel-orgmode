@@ -21,6 +21,8 @@ import re
 import cPickle as pickle
 import cStringIO
 import diff3
+import datetime
+import dateutil.parser
 
 class TasksTree(object):
     """
@@ -33,13 +35,14 @@ class TasksTree(object):
     - may have a title
     """
 
-    def __init__(self, title=None, task_id=None, task_notes=None, task_status=None):
+    def __init__(self, title=None, task_id=None, task_notes=None, task_status=None, task_due=None):
         self.title = title
         self.task_id = task_id
         self.subtasks = []
         self.notes = task_notes
         # *status* usually takes on the value 'completed' or 'needsAction'
         self.status = task_status
+        self.due = task_due
         
     def __getitem__(self, key):
         return self.subtasks[key]
@@ -66,7 +69,7 @@ class TasksTree(object):
             return None
 
     def add_subtask(self, title, task_id = None, parent_id = None,
-            task_notes=None, task_status=None):
+            task_notes=None, task_status=None, task_due=None):
         """
         Adds a subtask to the tree
         - with the specified task_id
@@ -74,12 +77,12 @@ class TasksTree(object):
         """
         if parent_id is None:
             self.subtasks.append(
-                TasksTree(title, task_id, task_notes, task_status))
+                TasksTree(title, task_id, task_notes, task_status, task_due))
         else:
             if self.get_task_with_id(parent_id) is None:
                 raise ValueError, "No element with suitable parent id"
             self.get_task_with_id(parent_id).add_subtask(title, task_id, None,
-                    task_notes, task_status)
+                    task_notes, task_status, task_due)
 
     def add_subtree(self, tree_to_add, include_root=False, root_title=None,
             root_notes=None):
@@ -138,7 +141,8 @@ class TasksTree(object):
                                'body': {
                                            'title': self.title,
                                            'notes': self.notes,
-                                           'status': self.status
+                                           'status': self.status,
+                                           'due': self.due
                                        }
                               }
             if parent:
@@ -161,6 +165,10 @@ class TasksTree(object):
                 done_string = u" DONE"
             indentations = '*' * (level+1) + done_string + " "
             res.append(indentations + subtask.title)
+            if subtask.due is not None:
+                due = dateutil.parser.parse(subtask.due).date().strftime('%Y-%m-%d %a')
+                deadline_string = ' ' * (level+1) + u' DEADLINE: <'+ due +'>'
+                res.append(deadline_string)
             if subtask.notes is not None:
                 notes = subtask.notes
                 # add initial space to lines starting w/'*', so that it isn't treated as a task
@@ -331,6 +339,7 @@ def tasklist_to_tasktree(tasklist):
         parent -- unique identification number of task's parent
         notes -- additional text describing task
         status -- flag indicating whether or not task is crossed off
+        due -- RFC-3339 Date for the task deadline
 
     """
     tasks_tree = TasksTree()
@@ -340,7 +349,7 @@ def tasklist_to_tasktree(tasklist):
         t = tasklist.pop(0)
         try:
             tasks_tree.add_subtask(t['title'], t['id'],
-                    t.get('parent'), t.get('notes'), t.get('status'))
+                    t.get('parent'), t.get('notes'), t.get('status'), t.get('due'))
         except ValueError:
             fail_count += 1
             tasklist.append(t)
@@ -388,6 +397,7 @@ def parse_text_to_tree(text):
     f = cStringIO.StringIO(text)
     
     headline_regex = re.compile("^(\*+ )( *)(DONE )?")
+    due_regex = re.compile("^\s+DEADLINE:\s+<((\d+)-(\d+)-(\d+) ([^>]+)?)>")
     tasks_tree = TasksTree()
     
     indent_level = 0
@@ -395,6 +405,7 @@ def parse_text_to_tree(text):
     seen_first_task = False
     task_notes = None
     task_title = None
+    task_due = None
     for n, line in enumerate(f):
         matches = headline_regex.findall(line)
         line = line.rstrip("\n")
@@ -411,7 +422,9 @@ def parse_text_to_tree(text):
                 tasks_tree.last_task_node_at_level(indent_level).add_subtask(
                         title=task_title,
                         task_notes=task_notes,
-                        task_status=task_status)
+                        task_status=task_status,
+                        task_due=task_due)
+                task_due = None
             else:
                 if task_notes is not None:
                     # this means there was some text at the beginning of the
@@ -420,7 +433,8 @@ def parse_text_to_tree(text):
                     tasks_tree.last_task_node_at_level(0).add_subtask(
                             title="",
                             task_notes=task_notes,
-                            task_status=None)
+                            task_status=None,
+                            task_due=None)
                 # this is the first task, so skip adding a last-task to the
                 # tree, and record that we've encountered our first task
                 seen_first_task = True
@@ -445,7 +459,17 @@ def parse_text_to_tree(text):
         except IndexError:
             # this is not a task, but a task-notes line
             if task_notes is None:
-                task_notes = line
+                # Check if the first line is a DEADLINE line
+                due_matches = due_regex.findall(line)
+                if len(due_matches) > 0:
+                    # DEADLINE timestmaps can have the formats described
+                    # at http://orgmode.org/manual/Timestamps.html
+                    # but we'll only use the simplest one.
+                    task_due = datetime.datetime(int(due_matches[0][1]),
+                                    int(due_matches[0][2]),
+                                    int(due_matches[0][3])).strftime('%Y-%m-%dT%H:%M:%SZ')
+                else:
+                    task_notes = line
             else:
                 task_notes += "\n" + line
         
@@ -461,12 +485,14 @@ def parse_text_to_tree(text):
         tasks_tree.last_task_node_at_level(indent_level).add_subtask(
                 title=task_title,
                 task_notes=task_notes,
-                task_status=task_status)
+                task_status=task_status,
+                task_due=task_due)
     else: # there are no headlines in the org-file; create a dummy headline
         tasks_tree.last_task_node_at_level(0).add_subtask(
                 title="",
                 task_notes=task_notes,
-                task_status=None)
+                task_status=None,
+                task_due=None)
 
     f.close()
     return tasks_tree

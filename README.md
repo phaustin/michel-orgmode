@@ -85,6 +85,7 @@ To run the script, you need to install the following dependencies:
 * [google-api-python-client](http://code.google.com/p/google-api-python-client/)
 * [python-gflags](http://code.google.com/p/python-gflags/) (usually available in
   package repositories of major linux distributions)
+* [python dateutil module](https://pypi.python.org/pypi/python-dateutil)
 
 
 About
