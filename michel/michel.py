@@ -167,7 +167,7 @@ class TasksTree(object):
             res.append(indentations + subtask.title)
             if subtask.due is not None:
                 due = dateutil.parser.parse(subtask.due).date().strftime('%Y-%m-%d %a')
-                deadline_string = ' ' * (level+1) + u' DEADLINE: <'+ due +'>'
+                deadline_string = u' DEADLINE: <'+ due +'>'
                 res.append(deadline_string)
             if subtask.notes is not None:
                 notes = subtask.notes
@@ -397,7 +397,10 @@ def parse_text_to_tree(text):
     f = cStringIO.StringIO(text)
     
     headline_regex = re.compile("^(\*+ )( *)(DONE )?")
-    due_regex = re.compile("^\s+DEADLINE:\s+<((\d+)-(\d+)-(\d+) ([^>]+)?)>")
+    # DEADLINE timestmaps can have the formats described at
+    # http://orgmode.org/manual/Timestamps.html but it only makes
+    # sense to use simplest one.
+    due_regex = re.compile("^\s*?DEADLINE:\s*?<\s*?((\d+)-(\d+)-(\d+)\s*?( [^>]+)?)\s*?>")
     tasks_tree = TasksTree()
     
     indent_level = 0
@@ -462,9 +465,6 @@ def parse_text_to_tree(text):
                 # Check if the first line is a DEADLINE line
                 due_matches = due_regex.findall(line)
                 if len(due_matches) > 0:
-                    # DEADLINE timestmaps can have the formats described
-                    # at http://orgmode.org/manual/Timestamps.html
-                    # but we'll only use the simplest one.
                     task_due = datetime.datetime(int(due_matches[0][1]),
                                     int(due_matches[0][2]),
                                     int(due_matches[0][3])).strftime('%Y-%m-%dT%H:%M:%SZ')

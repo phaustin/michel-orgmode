@@ -179,5 +179,70 @@ class TestMichel(unittest.TestCase):
         self.assertTrue(had_conflict)
         self.assertTrue(str(merged_tree).find("<<<<<<< MINE"))
 
+    def test_deadline(self):
+        """
+        Test the case where an org-mode headline has a deadline assigned.
+        """
+        # text should have trailing "\n" character, like most textfiles
+        org_text = textwrap.dedent("""\
+            * Headline with no deadline
+            Body 1a
+                Body 1b
+            * Headline with deadline
+            DEADLINE: <2015-12-31 Thu>
+            Body 1a
+                Body 1b
+            * Headline with deadline in Spanish
+               DEADLINE: <2015-12-31 jue>
+            Body 1a
+                Body 1b
+            * Headline with deadline in French (and no body)
+               DEADLINE: <2015-12-31 jeu.>
+            * Headline with deadline in Basque
+               DEADLINE: <2015-12-31 og.>
+            Body 1a
+                Body 1b
+            * Headline with deadline and variations in whitespace (1)
+               DEADLINE:<2015-12-31 Thu>
+            Body 1a
+            * Headline with deadline and variations in whitespace (2)
+               DEADLINE:<      2015-12-31 Thu>
+            Body 1a
+            * Headline with deadline and variations in whitespace (3)
+               DEADLINE:<2015-12-31        Thu>
+            Body 1a
+            * Headline with deadline and variations in whitespace (4)
+               DEADLINE:<2015-12-31        Thu    >
+            Body 1a
+            * Headline with deadline and variations in whitespace (5)
+               DEADLINE:     <    2015-12-31    Thu      >
+            Body 1a
+            * Headline with deadline and no day name
+               DEADLINE: <2015-12-31>
+            Body 1a
+            * Headline with deadline and variations in whitespace and no day name (1)
+               DEADLINE:<2015-12-31>
+            Body 1a
+            * Headline with deadline and variations in whitespace and no day name (2)
+               DEADLINE:<      2015-12-31>
+            Body 1a
+            * Headline with deadline and variations in whitespace and no day name (3)
+               DEADLINE:<2015-12-31      >
+            Body 1a
+            * Headline with deadline and variations in whitespace and no day name (4)
+               DEADLINE:        <2015-12-31>
+            Body 1a
+            * Headline with deadline and variations in whitespace and no day name (5)
+               DEADLINE:     <    2015-12-31>
+            Body 1a
+            * Headline with deadline and variations in whitespace and no day name (6)
+               DEADLINE:     <    2015-12-31     >
+            Body 1a
+            """)
+        tasktree = m.parse_text_to_tree(org_text)
+        self.assertEqual(tasktree[0].due, None)
+        for i in range(1, len(tasktree)):
+            self.assertEqual(tasktree[i].due, '2015-12-31T00:00:00Z')
+
 if __name__ == '__main__':
     unittest.main()
