@@ -6,12 +6,11 @@ michel-orgmode -- a script to push/pull an org-mode text file to/from a google
 
 """
 from __future__ import with_statement
-import gflags
 import httplib2
 from apiclient.discovery import build
 from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow
-from oauth2client.tools import run
+import oauth2client.tools
 from xdg.BaseDirectory import save_data_path #, save_config_path 
 import argparse
 import os.path
@@ -28,6 +27,8 @@ import cStringIO
 import diff3
 import datetime
 import dateutil.parser
+
+oauth2client_tools_flags = None
 
 class TasksTree(object):
     """
@@ -285,18 +286,16 @@ def get_service(profile_name):
     Yes I do publish a secret key here, apparently it is normal
     http://stackoverflow.com/questions/7274554/why-google-native-oauth2-flow-require-client-secret
     """
-    FLAGS = gflags.FLAGS
     FLOW = OAuth2WebServerFlow(
             client_id='617841371351.apps.googleusercontent.com',
             client_secret='_HVmphe0rqwxqSR8523M6g_g',
             scope='https://www.googleapis.com/auth/tasks',
             user_agent='michel/0.0.1')
-    FLAGS.auth_local_webserver = False
     auth_filename = profile_name + "_oauth.dat"
     storage = Storage(os.path.join(save_data_path("michel"), auth_filename))
     credentials = storage.get()
     if credentials is None or credentials.invalid == True:
-        credentials = run(FLOW, storage)
+        credentials = oauth2client.tools.run_flow(FLOW, storage, oauth2client_tools_flags)
     http = httplib2.Http()
     http = credentials.authorize(http)
     return build(serviceName='tasks', version='v1', http=http)
@@ -572,7 +571,8 @@ def sync_todolist(path, profile, list_name):
 
 def main():
     parser = argparse.ArgumentParser(description="Synchronize org-mode text" 
-                                           "files with a google-tasks list.")
+                                           "files with a google-tasks list.",
+                                     parents=[oauth2client.tools.argparser])
     
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--push", action='store_true',
@@ -597,6 +597,8 @@ def main():
             help='A GTasks list to pull from / push to (default list if empty)')
     
     args = parser.parse_args()
+    global oauth2client_tools_flags
+    oauth2client_tools_flags = args
     
     if args.push and not args.orgfile:
         parser.error('--orgfile must be specified when using --push')
