@@ -1,7 +1,7 @@
 This Repository
 ===============
 
-The py3 branches has changes needed to make
+The py3 branch has changes needed to make
 
 https://bitbucket.org/edgimar/michel-orgmode
 
