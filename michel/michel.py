@@ -6,6 +6,8 @@ michel-orgmode -- a script to push/pull an org-mode text file to/from a google
 
 """
 from __future__ import with_statement
+from __future__ import print_function
+from __future__ import absolute_import
 import httplib2
 from apiclient.discovery import build
 from oauth2client.file import Storage
@@ -19,12 +21,14 @@ import sys
 # Set default encoding to 'UTF-8' instead of 'ascii'
 # http://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
 # Bad things might happen though
-reload(sys)
-sys.setdefaultencoding("UTF8")
+#from importlib import reload
+#reload(sys)
+#sys.setdefaultencoding("UTF8")
 import re
-import cPickle as pickle
-import cStringIO
-import diff3
+#import cPickle as pickle
+import pickle
+from io import StringIO
+from . import diff3
 import datetime
 import dateutil.parser
 
@@ -86,7 +90,7 @@ class TasksTree(object):
                 TasksTree(title, task_id, task_notes, task_status, task_due))
         else:
             if self.get_task_with_id(parent_id) is None:
-                raise ValueError, "No element with suitable parent id"
+                raise ValueError("No element with suitable parent id")
             self.get_task_with_id(parent_id).add_subtask(title, task_id, None,
                     task_notes, task_status, task_due)
 
@@ -312,7 +316,7 @@ def get_list_id(service, list_name=None):
                 break
         else:
             # no list with the given name was found
-            print '\nERROR: No google task-list named "%s"\n' % list_name
+            print('\nERROR: No google task-list named "%s"\n' % list_name)
             sys.exit(2)
 
     return list_id
@@ -398,7 +402,7 @@ def parse_path(path):
 def parse_text_to_tree(text):
     """Parses an org-mode formatted block of text and returns a tree"""
     # create a (read-only) file object containing *text*
-    f = cStringIO.StringIO(text)
+    f = StringIO(text)
     
     headline_regex = re.compile("^(\*+ )( *)(DONE )?")
     # DEADLINE timestmaps can have the formats described at
@@ -535,23 +539,23 @@ def sync_todolist(path, profile, list_name):
         bkup_fname = path + ".orig"
         shutil.copyfile(path, bkup_fname)
         
-        print ("\nWARNING: This is the first time syncing the '%s' list. "
+        print(("\nWARNING: This is the first time syncing the '%s' list. "
                "There is no way of knowing how best to merge the contents "
                "of this list with the contents of the org-file.  Therefore, "
                "'%s' has been updated to contain the contents of the "
                "list, and a backup of this file has been created "
                "as '%s'.  Please update '%s' as desired, and re-run "
-               "the synchronization.\n") % (list_name, path, bkup_fname, path)
+               "the synchronization.\n") % (list_name, path, bkup_fname, path))
     
     merged_tree, conflict_occurred = treemerge(orgfile_tree, orig_tree, gtasks_tree)
     
     if conflict_occurred:
         conflicted_filename = path + ".conflicted"
         open(conflicted_filename, "wb").write(str(merged_tree))
-        print ("\nWARNING:  Org-file and task-list could not be cleanly merged:  "
+        print(("\nWARNING:  Org-file and task-list could not be cleanly merged:  "
               "the attempted merge can be found in '%s'.  Please "
               "modify this file, copy it to '%s', and push '%s' back "
-              "to the desired GTasks list.\n") % (conflicted_filename, path, path)
+              "to the desired GTasks list.\n") % (conflicted_filename, path, path))
         sys.exit(2)
     else:
         # store the successfully merged tree locally so we can use it as the
