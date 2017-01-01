@@ -1,3 +1,13 @@
+This Repository
+===============
+
+The py3 branches has changes needed to make
+
+https://bitbucket.org/edgimar/michel-orgmode
+
+run under python 3.5
+
+
 Description
 ===========
 
