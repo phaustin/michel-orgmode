@@ -206,7 +206,7 @@ class TasksTree(object):
         print(self.__str__().encode('utf-8'))
 
     def write_to_orgfile(self, fname):
-        f = open(fname, 'wb')
+        f = open(fname, 'w')
         f.write(self.__str__().encode('utf-8'))
         f.close()
 
@@ -551,7 +551,7 @@ def sync_todolist(path, profile, list_name):
     
     if conflict_occurred:
         conflicted_filename = path + ".conflicted"
-        open(conflicted_filename, "wb").write(str(merged_tree))
+        open(conflicted_filename, "w").write(str(merged_tree))
         print(("\nWARNING:  Org-file and task-list could not be cleanly merged:  "
               "the attempted merge can be found in '%s'.  Please "
               "modify this file, copy it to '%s', and push '%s' back "
@@ -570,7 +570,7 @@ def sync_todolist(path, profile, list_name):
         merged_tree.push(service, list_id)
         
         # write merged tree to orgfile
-        open(path, 'wb').write(str(merged_tree))
+        open(path, 'w').write(str(merged_tree))
 
 
 def main():
