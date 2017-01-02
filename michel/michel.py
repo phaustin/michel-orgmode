@@ -18,16 +18,18 @@ import argparse
 import os.path
 import shutil
 import sys
+import six
+from six.moves import cStringIO
+import six.moves.cPickle as cPickle
+
 # Set default encoding to 'UTF-8' instead of 'ascii'
 # http://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
 # Bad things might happen though
-#from importlib import reload
-#reload(sys)
-#sys.setdefaultencoding("UTF8")
+if six.PY2:
+    reload(sys)
+    sys.setdefaultencoding("UTF8")
 import re
-#import cPickle as pickle
-import pickle
-from io import StringIO
+
 from . import diff3
 import datetime
 import dateutil.parser
@@ -200,14 +202,14 @@ class TasksTree(object):
         """
         # always add a trailing "\n" because text-files normally include a "\n"
         # at the end of the last line of the file.
-        return u'\n'.join(self._lines(0)) + u"\n"
+        return six.u('\n').join(self._lines(0)) + six.u('\n')
 
     def _print(self):
-        print(self.__str__().encode('utf-8'))
+        print(self.__str__())
 
     def write_to_orgfile(self, fname):
         f = open(fname, 'w')
-        f.write(self.__str__().encode('utf-8'))
+        f.write(self.__str__())
         f.close()
 
 def database_read(key):
@@ -220,7 +222,7 @@ def database_read(key):
     db_path = os.path.join(save_data_path("michel"), "config_data.pkl")
     try:
         with open(db_path, "rb") as db_file:
-            db_dict = pickle.load(db_file)
+            db_dict = cPickle.load(db_file)
     except IOError: # typically because file doesn't exist
         db_dict = {}
     
@@ -233,26 +235,26 @@ def database_write(key, obj):
     db_path = os.path.join(save_data_path("michel"), "config_data.pkl")
     try:
         with open(db_path, "rb") as db_file:
-            db_dict = pickle.load(db_file)
+            db_dict = cPickle.load(db_file)
     except IOError: # typically because file doesn't exist
         db_dict = {}
     db_dict[key] = obj
     with open(db_path, "wb") as db_file:
-        pickle.dump(db_dict, db_file, pickle.HIGHEST_PROTOCOL)
+        cPickle.dump(db_dict, db_file, cPickle.HIGHEST_PROTOCOL)
 
 def database_delete(key):
     "Delete the object in the persistent database stored under *key*."
     db_path = os.path.join(save_data_path("michel"), "config_data.pkl")
     try:
         with open(db_path, "rb") as db_file:
-            db_dict = pickle.load(db_file)
+            db_dict = cPickle.load(db_file)
     except AttributeError: # typically because file doesn't exist
         db_dict = {}
     
     try:
         del(db_dict[key])
         with open(db_path, "wb") as db_file:
-            pickle.dump(db_dict, db_file, pickle.HIGHEST_PROTOCOL)
+            cPickle.dump(db_dict, db_file, cPickle.HIGHEST_PROTOCOL)
     except KeyError:
         pass
     
@@ -402,7 +404,7 @@ def parse_path(path):
 def parse_text_to_tree(text):
     """Parses an org-mode formatted block of text and returns a tree"""
     # create a (read-only) file object containing *text*
-    f = StringIO(text)
+    f = cStringIO(text)
     
     headline_regex = re.compile("^(\*+ )( *)(DONE )?")
     # DEADLINE timestmaps can have the formats described at
